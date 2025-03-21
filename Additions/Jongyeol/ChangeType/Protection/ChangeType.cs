@@ -24,7 +24,7 @@ namespace Confuser.Protections {
 
 			public ChangeTypePhase(ConfuserComponent parent) : base(parent) { }
 
-			public override ProtectionTargets Targets => ProtectionTargets.AllMembers;
+			public override ProtectionTargets Targets => ProtectionTargets.Modules;
 
 			public override string Name => "type Change";
 

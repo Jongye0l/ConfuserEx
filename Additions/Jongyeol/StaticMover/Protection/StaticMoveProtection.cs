@@ -5,7 +5,6 @@ using ConfuserEx.API;
 using dnlib.DotNet;
 
 namespace Confuser.Protections {
-    [AfterProtection("Ki.RefProxy")]
     public class StaticMoveProtection : Protection {
         public override ProtectionPreset Preset => ProtectionPreset.Minimum;
         public override string Name => "Static Mover";
@@ -22,7 +21,7 @@ namespace Confuser.Protections {
 
             public ShufflePhase(ConfuserComponent parent) : base(parent) { }
 
-            public override ProtectionTargets Targets => ProtectionTargets.AllMembers;
+            public override ProtectionTargets Targets => ProtectionTargets.Modules;
 
             public override string Name => "Static mover";
 

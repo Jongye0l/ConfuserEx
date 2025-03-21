@@ -6,7 +6,6 @@ using dnlib.DotNet;
 using Utils = ConfuserEx_Additions.Jongyeol.Utils;
 
 namespace Confuser.Protections {
-	[AfterProtection("Ki.RefProxy")]
 	public class ShuffleProtection : Protection {
 		public override ProtectionPreset Preset => ProtectionPreset.Minimum;
 		public override string Name => "Shuffle Protection";
@@ -22,7 +21,7 @@ namespace Confuser.Protections {
 
 			public ShufflePhase(ConfuserComponent parent) : base(parent) { }
 
-			public override ProtectionTargets Targets => ProtectionTargets.AllMembers;
+			public override ProtectionTargets Targets => ProtectionTargets.Types;
 
 			public override string Name => "Shuffle Members";
 
