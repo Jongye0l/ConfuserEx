@@ -5,12 +5,13 @@ using ConfuserEx.API;
 using dnlib.DotNet;
 
 namespace Confuser.Protections {
+    [AfterProtection("Ki.RefProxy")]
     public class StaticMoveProtection : Protection {
         public override ProtectionPreset Preset => ProtectionPreset.Minimum;
         public override string Name => "Static Mover";
         public override string Description => "All Static Code Move Global Type";
         public override string Id => "static mover";
-        public override string FullId => "Confuser.Jongyeol.staticMover";
+        public override string FullId => "Jongyeol.staticMover";
         protected override void Initialize(ConfuserContext context) { }
 
         protected override void PopulatePipeline(ProtectionPipeline pipeline) {

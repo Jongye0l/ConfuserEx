@@ -6,12 +6,13 @@ using dnlib.DotNet;
 using Utils = ConfuserEx_Additions.Jongyeol.Utils;
 
 namespace Confuser.Protections {
+	[AfterProtection("Ki.RefProxy", "Jongyeol.staticMover")]
 	public class ShuffleProtection : Protection {
 		public override ProtectionPreset Preset => ProtectionPreset.Minimum;
 		public override string Name => "Shuffle Protection";
 		public override string Description => "Shuffle All Members";
 		public override string Id => "shuffle members";
-		public override string FullId => "Confuser.Jongyeol.SuffleMember";
+		public override string FullId => "Jongyeol.SuffleMember";
 		protected override void Initialize(ConfuserContext context) { }
 		protected override void PopulatePipeline(ProtectionPipeline pipeline) {
 			pipeline.InsertPreStage(PipelineStage.WriteModule, new ShufflePhase(this));
