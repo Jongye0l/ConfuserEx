@@ -4,6 +4,7 @@
     <TargetFrameworks>net462</TargetFrameworks>
     <RootNamespace>ConfuserEx_Additions</RootNamespace>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +20,7 @@
     <ProjectReference Include="..\Confuser.DynCipher\Confuser.DynCipher.csproj" />
     <ProjectReference Include="..\Confuser.Renamer\Confuser.Renamer.csproj" />
     <ProjectReference Include="..\Confuser.Runtime\Confuser.Runtime.csproj" />
+    <ProjectReference Include="..\ConfuserEx.API\ConfuserEx.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>
