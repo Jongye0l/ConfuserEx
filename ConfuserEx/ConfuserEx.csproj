@@ -6,7 +6,6 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net462</TargetFramework>
     <UseWPF>true</UseWPF>
-    <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\ConfuserEx.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
