@@ -28,7 +28,7 @@ namespace Confuser.Protections {
             protected override void Execute(ConfuserContext context, ProtectionParameters parameters) {
                 foreach(ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>().WithProgress(context.Logger)) {
                     TypeDef globalType = module.GlobalType;
-                    foreach(TypeDef type in module.Types) MoveMembers(globalType, type, StaticMoveTargets.All);
+                    foreach(TypeDef type in module.Types) MoveMembers(type, globalType, StaticMoveTargets.All);
                 }
             }
 
@@ -37,27 +37,31 @@ namespace Confuser.Protections {
                 if(type != globalType) {
                     MethodDef[] methods = type.Methods.ToArray();
                     foreach(MethodDef method in methods) {
-                        if(!method.HasBody || !method.IsStatic || method.IsSpecialName || method.IsPublic) continue;
+                        if(!method.HasBody || !method.IsStatic || method.IsSpecialName || method.IsPublic && type.IsPublic) continue;
                         type.Methods.Remove(method);
                         globalType.Methods.Add(method);
+                        method.DeclaringType = globalType;
                     }
                     FieldDef[] fields = type.Fields.ToArray();
                     foreach(FieldDef field in fields) {
-                        if(field.IsStatic || field.IsSpecialName || field.IsPublic) continue;
+                        if(field.IsStatic || field.IsSpecialName || field.IsPublic && type.IsPublic) continue;
                         type.Fields.Remove(field);
                         globalType.Fields.Add(field);
+                        field.DeclaringType = globalType;
                     }
                     PropertyDef[] properties = type.Properties.ToArray();
                     foreach(PropertyDef property in properties) {
-                        if(property.IsSpecialName || property.IsPublic()) continue;
+                        if(property.IsSpecialName || property.IsPublic() && type.IsPublic) continue;
                         type.Properties.Remove(property);
                         globalType.Properties.Add(property);
+                        property.DeclaringType = globalType;
                     }
                     EventDef[] events = type.Events.ToArray();
                     foreach(EventDef @event in events) {
-                        if(@event.IsSpecialName || @event.IsPublic()) continue;
+                        if(@event.IsSpecialName || type.IsPublic) continue;
                         type.Events.Remove(@event);
                         globalType.Events.Add(@event);
+                        @event.DeclaringType = globalType;
                     }
                 }
                 foreach(TypeDef typeDef in type.GetTypes()) MoveMembers(typeDef, globalType, targets);
