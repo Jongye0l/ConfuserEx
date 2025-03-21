@@ -29,7 +29,7 @@ namespace Confuser.Protections {
 			public override string Name => "type Change";
 
 			protected override void Execute(ConfuserContext context, ProtectionParameters parameters) {
-				foreach (ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>()) {
+				foreach (ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>().WithProgress(context.Logger)) {
 					TypeDefUser typeDef = new(Rename.RandomName(), Rename.RandomName(), module.CorLibTypes.Object.TypeDefOrRef);
 					module.Types.Add(typeDef);
 					TypeSig typeSig = typeDef.ToTypeSig();
