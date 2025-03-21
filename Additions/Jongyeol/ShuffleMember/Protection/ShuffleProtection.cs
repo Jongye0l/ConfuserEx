@@ -6,7 +6,7 @@ using dnlib.DotNet;
 using Utils = ConfuserEx_Additions.Jongyeol.Utils;
 
 namespace Confuser.Protections {
-	[BeforeProtection("Ki.RefProxy")]
+	[AfterProtection("Ki.RefProxy")]
 	public class ShuffleProtection : Protection {
 		public override ProtectionPreset Preset => ProtectionPreset.Minimum;
 		public override string Name => "Shuffle Protection";
