@@ -102,11 +102,28 @@ namespace Confuser.Protections {
                     MethodDef[] methods = type.Methods.ToArray();
                     List<IMemberDef> movedMembers = [];
                     foreach(MethodDef method in methods) {
-                        if(!method.HasBody || !method.IsStatic || method.IsSpecialName || method.IsPublic && type.IsPublic) continue;
+                        if(!method.HasBody || !method.Body.HasInstructions || !method.IsStatic || method.IsSpecialName || method.IsPublic && type.IsPublic) continue;
                         curTargets = ParseTargets(targets, method.CustomAttributes);
                         if(curTargets.HasFlag(StaticMoveTargets.Method)) method.DeclaringType = globalType;
                         if(method.IsPrivate) method.Access = MethodAttributes.Assembly;
                         movedMembers.Add(method);
+                        foreach(Instruction instruction in method.Body.Instructions) {
+                            if(instruction.Operand is MethodDef method2) {
+                                if(method2.IsPrivate) method2.Access = MethodAttributes.Assembly;
+                                else if(method2.Access is MethodAttributes.Family or MethodAttributes.FamANDAssem) method2.Access = MethodAttributes.FamORAssem;
+                                if(method2.DeclaringType.IsNestedPrivate)
+                                    method2.DeclaringType.Attributes = method2.DeclaringType.Attributes & ~TypeAttributes.VisibilityMask | TypeAttributes.NestedAssembly;
+                                else if(method2.DeclaringType.IsNestedFamily || method2.DeclaringType.IsNestedFamilyAndAssembly)
+                                    method2.DeclaringType.Attributes = method2.DeclaringType.Attributes & ~TypeAttributes.VisibilityMask | TypeAttributes.NestedFamORAssem;
+                            } else if(instruction.Operand is FieldDef field) {
+                                if(field.IsPrivate) field.Access = FieldAttributes.Assembly;
+                                else if(field.Access is FieldAttributes.Family or FieldAttributes.FamANDAssem) field.Access = FieldAttributes.FamORAssem;
+                                if(field.DeclaringType.IsNestedPrivate)
+                                    field.DeclaringType.Attributes = field.DeclaringType.Attributes & ~TypeAttributes.VisibilityMask | TypeAttributes.NestedAssembly;
+                                else if(field.DeclaringType.IsNestedFamily || field.DeclaringType.IsNestedFamilyAndAssembly)
+                                    field.DeclaringType.Attributes = field.DeclaringType.Attributes & ~TypeAttributes.VisibilityMask | TypeAttributes.NestedFamORAssem;
+                            }
+                        }
                     }
                     FieldDef[] fields = type.Fields.ToArray();
                     foreach(FieldDef field in fields) {
