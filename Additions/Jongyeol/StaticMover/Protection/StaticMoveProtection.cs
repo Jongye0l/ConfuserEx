@@ -36,25 +36,32 @@ namespace Confuser.Protections {
             private static void MoveMembers(TypeDef type, TypeDef globalType, StaticMoveTargets targets) {
                 targets = ParseTargets(targets, type.CustomAttributes);
                 if(type != globalType) {
+                    StaticMoveTargets curTargets;
                     MethodDef[] methods = type.Methods.ToArray();
                     foreach(MethodDef method in methods) {
                         if(!method.HasBody || !method.IsStatic || method.IsSpecialName || method.IsPublic && type.IsPublic) continue;
-                        method.DeclaringType = globalType;
+                        curTargets = ParseTargets(targets, method.CustomAttributes);
+                        if(curTargets.HasFlag(StaticMoveTargets.Method)) method.DeclaringType = globalType;
                     }
                     FieldDef[] fields = type.Fields.ToArray();
                     foreach(FieldDef field in fields) {
                         if(field.IsStatic || field.IsSpecialName || field.IsPublic && type.IsPublic) continue;
-                        field.DeclaringType = globalType;
+                        curTargets = ParseTargets(targets, field.CustomAttributes);
+                        if(curTargets.HasFlag(StaticMoveTargets.Field)) field.DeclaringType = globalType;
                     }
                     PropertyDef[] properties = type.Properties.ToArray();
                     foreach(PropertyDef property in properties) {
                         if(property.IsSpecialName || property.IsPublic() && type.IsPublic) continue;
+                        curTargets = ParseTargets(targets, property.CustomAttributes);
+                        if(!curTargets.HasFlag(StaticMoveTargets.Property)) continue;
                         property.DeclaringType = globalType;
+                        foreach(MethodDef method in property.GetMethods) method.DeclaringType = globalType;
                     }
                     EventDef[] events = type.Events.ToArray();
                     foreach(EventDef @event in events) {
                         if(@event.IsSpecialName || type.IsPublic) continue;
-                        @event.DeclaringType = globalType;
+                        curTargets = ParseTargets(targets, @event.CustomAttributes);
+                        if(curTargets.HasFlag(StaticMoveTargets.Event)) @event.DeclaringType = globalType;
                     }
                 }
                 foreach(TypeDef typeDef in type.GetTypes()) MoveMembers(typeDef, globalType, targets);
