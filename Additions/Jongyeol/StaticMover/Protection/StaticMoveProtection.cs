@@ -45,13 +45,13 @@ namespace Confuser.Protections {
                     }
                     FieldDef[] fields = type.Fields.ToArray();
                     foreach(FieldDef field in fields) {
-                        if(field.IsStatic || field.IsSpecialName || field.IsPublic && type.IsPublic) continue;
+                        if(!field.IsStatic || field.IsSpecialName || field.IsPublic && type.IsPublic) continue;
                         curTargets = ParseTargets(targets, field.CustomAttributes);
                         if(curTargets.HasFlag(StaticMoveTargets.Field)) field.DeclaringType = globalType;
                     }
                     PropertyDef[] properties = type.Properties.ToArray();
                     foreach(PropertyDef property in properties) {
-                        if(property.IsSpecialName || property.IsPublic() && type.IsPublic) continue;
+                        if(!property.IsStatic() || property.IsSpecialName || property.IsPublic() && type.IsPublic) continue;
                         curTargets = ParseTargets(targets, property.CustomAttributes);
                         if(!curTargets.HasFlag(StaticMoveTargets.Property)) continue;
                         property.DeclaringType = globalType;
