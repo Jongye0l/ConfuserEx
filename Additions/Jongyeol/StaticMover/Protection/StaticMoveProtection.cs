@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Confuser.Core;
 using Confuser.Core.Services;
@@ -6,6 +7,7 @@ using ConfuserEx_Additions.Jongyeol;
 using ConfuserEx.API;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
+using Utils = ConfuserEx_Additions.Jongyeol.Utils;
 
 namespace Confuser.Protections {
     [AfterProtection("Ki.RefProxy")]
@@ -31,6 +33,8 @@ namespace Confuser.Protections {
 
             public Dictionary<MethodDef, MethodDefUser> MethodMap = new();
 
+            public Dictionary<TypeDef, List<IMemberDef>> NeedCtorMembers = new();
+
             protected override void Execute(ConfuserContext context, ProtectionParameters parameters) {
                 IMarkerService marker = context.Registry.GetService<IMarkerService>();
                 foreach(ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>().WithProgress(context.Logger)) {
@@ -41,19 +45,68 @@ namespace Confuser.Protections {
                     foreach(TypeDef type in module.Types) MoveMembers(type, globalType, StaticMoveTargets.All);
                     foreach(TypeDef type in module.Types) CheckFunction(type, globalType, moveType, marker);
                     CheckFunction(moveType, globalType, moveType, marker);
+                    HashSet<TypeDef> needCtors1 = [];
+                    HashSet<TypeDef> needCtors2 = [];
+                    foreach(KeyValuePair<TypeDef,List<IMemberDef>> pair in NeedCtorMembers) {
+                        bool ctor1 = false;
+                        bool ctor2 = false;
+                        foreach(IMemberDef member in pair.Value) {
+                            if(member.DeclaringType == globalType) {
+                                ctor1 = true;
+                                needCtors1.Add(pair.Key);
+                            } else if(member.DeclaringType == moveType) {
+                                ctor2 = true;
+                                needCtors2.Add(pair.Key);
+                            } else context.Logger.Debug("Unknown Member: " + member.FullName);
+                            if(ctor1 && ctor2) break;
+                        }
+                    }
+                    Dictionary<TypeDef, MethodDefUser> methodMap = new();
+                    MethodDef cctor = globalType.FindOrCreateStaticConstructor();
+                    cctor.Body ??= new CilBody();
+                    if(cctor.Body.Instructions.Last()?.OpCode == OpCodes.Ret) cctor.Body.Instructions.RemoveAt(cctor.Body.Instructions.Count - 1);
+                    foreach(TypeDef typeDef in needCtors1.OrderBy(_ => Utils.Random.Next())) {
+                        if(typeDef.IsNestedPrivate) continue;
+                        MethodDefUser method = new(Rename.RandomName(), MethodSig.CreateStatic(globalType.Module.CorLibTypes.Void), MethodImplAttributes.Managed | MethodImplAttributes.IL, MethodAttributes.Assembly | MethodAttributes.Static);
+                        typeDef.Methods.Add(method);
+                        marker.Mark(typeDef, Parent);
+                        method.Body = new CilBody();
+                        method.Body.Instructions.Insert(0, OpCodes.Ret.ToInstruction());
+                        methodMap.Add(typeDef, method);
+                        cctor.Body.Instructions.Add(Instruction.Create(OpCodes.Call, method));
+                    }
+                    cctor.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
+                    cctor = moveType.FindOrCreateStaticConstructor();
+                    cctor.Body = new CilBody();
+                    cctor.Body.Instructions.Clear();
+                    foreach(TypeDef typeDef in needCtors2.OrderBy(_ => Utils.Random.Next())) {
+                        if(!methodMap.TryGetValue(typeDef, out MethodDefUser method)) {
+                            if(typeDef.IsNestedPrivate) continue;
+                            method = new MethodDefUser(Rename.RandomName(), MethodSig.CreateStatic(globalType.Module.CorLibTypes.Void), MethodImplAttributes.Managed, MethodAttributes.Assembly | MethodAttributes.Static);
+                            typeDef.Methods.Add(method);
+                            marker.Mark(typeDef, Parent);
+                            method.Body = new CilBody();
+                            method.Body.Instructions.Insert(0, OpCodes.Ret.ToInstruction());
+                            methodMap.Add(typeDef, method);
+                        }
+                        cctor.Body.Instructions.Add(Instruction.Create(OpCodes.Call, method));
+                    }
+                    cctor.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
                 }
             }
 
-            private static void MoveMembers(TypeDef type, TypeDef globalType, StaticMoveTargets targets) {
+            private void MoveMembers(TypeDef type, TypeDef globalType, StaticMoveTargets targets) {
                 targets = ParseTargets(targets, type.CustomAttributes);
                 if(type != globalType) {
                     StaticMoveTargets curTargets;
                     MethodDef[] methods = type.Methods.ToArray();
+                    List<IMemberDef> movedMembers = [];
                     foreach(MethodDef method in methods) {
                         if(!method.HasBody || !method.IsStatic || method.IsSpecialName || method.IsPublic && type.IsPublic) continue;
                         curTargets = ParseTargets(targets, method.CustomAttributes);
                         if(curTargets.HasFlag(StaticMoveTargets.Method)) method.DeclaringType = globalType;
                         if(method.IsPrivate) method.Access = MethodAttributes.Assembly;
+                        movedMembers.Add(method);
                     }
                     FieldDef[] fields = type.Fields.ToArray();
                     foreach(FieldDef field in fields) {
@@ -61,6 +114,7 @@ namespace Confuser.Protections {
                         curTargets = ParseTargets(targets, field.CustomAttributes);
                         if(curTargets.HasFlag(StaticMoveTargets.Field)) field.DeclaringType = globalType;
                         if(field.IsPrivate) field.Access = FieldAttributes.Assembly;
+                        movedMembers.Add(field);
                     }
                     PropertyDef[] properties = type.Properties.ToArray();
                     foreach(PropertyDef property in properties) {
@@ -71,6 +125,7 @@ namespace Confuser.Protections {
                         foreach(MethodDef method in property.GetMethods) {
                             method.DeclaringType = globalType;
                             if(method.IsPrivate) method.Access = MethodAttributes.Assembly;
+                            movedMembers.Add(method);
                         }
                     }
                     EventDef[] events = type.Events.ToArray();
@@ -78,6 +133,14 @@ namespace Confuser.Protections {
                         if(!@event.IsStatic() || @event.IsSpecialName || type.IsPublic) continue;
                         curTargets = ParseTargets(targets, @event.CustomAttributes);
                         if(curTargets.HasFlag(StaticMoveTargets.Event)) @event.DeclaringType = globalType;
+                    }
+                    MethodDef cctor = type.FindStaticConstructor();
+                    if(cctor is { HasBody: true, Body.HasInstructions: true }) {
+                        List<IMemberDef> needCtorMembers = [];
+                        foreach(Instruction instruction in cctor.Body.Instructions)
+                            if(instruction.Operand is IMemberDef member && member.DeclaringType == globalType && movedMembers.Contains(member))
+                                needCtorMembers.Add(member);
+                        if(needCtorMembers.Count > 0) NeedCtorMembers[type] = needCtorMembers;
                     }
                 }
                 foreach(TypeDef typeDef in type.GetTypes()) MoveMembers(typeDef, globalType, targets);
