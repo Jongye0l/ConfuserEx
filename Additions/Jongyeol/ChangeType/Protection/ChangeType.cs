@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Confuser.Core;
+using Confuser.Core.Services;
 using ConfuserEx_Additions.Jongyeol;
 using ConfuserEx.API;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
-using Utils = ConfuserEx_Additions.Jongyeol.Utils;
 
 namespace Confuser.Protections {
 	public class ChangeType : Protection {
@@ -29,9 +28,11 @@ namespace Confuser.Protections {
 			public override string Name => "type Change";
 
 			protected override void Execute(ConfuserContext context, ProtectionParameters parameters) {
-				foreach (ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>().WithProgress(context.Logger)) {
+				IMarkerService marker = context.Registry.GetService<IMarkerService>();
+				foreach(ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>().WithProgress(context.Logger)) {
 					TypeDefUser typeDef = new(Rename.RandomName(), Rename.RandomName(), module.CorLibTypes.Object.TypeDefOrRef);
 					module.Types.Add(typeDef);
+					marker.Mark(typeDef, Parent);
 					TypeSig typeSig = typeDef.ToTypeSig();
 					foreach(TypeDef type in module.Types) ChangeType(type, typeSig, TypeChangeTargets.All);
 				}
