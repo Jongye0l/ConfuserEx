@@ -37,9 +37,9 @@ namespace Confuser.Protections {
                     if(targets.HasFlag(RenameTargets.Type)) type.Name = Rename.RandomName();
                 }
                 foreach(MethodDef method in type.Methods) {
-                    if(method.IsPublic && type.IsPublic || method.IsConstructor || method.IsSpecialName || method.IsVirtual && (method.IsPublic || method.IsFamilyOrAssembly || method.IsFamily)) continue;
                     RenameTargets methodTargets = ParseTargets(targets, method.CustomAttributes);
-                    if(methodTargets.HasFlag(RenameTargets.Method)) method.Name = Rename.RandomName();
+                    if((!method.IsPublic && !method.IsFamilyOrAssembly && !method.IsFamily || !type.IsPublic) && !method.IsConstructor &&
+                       !method.IsSpecialName && methodTargets.HasFlag(RenameTargets.Method)) method.Name = Rename.RandomName();
                     foreach(Parameter parameter in method.Parameters) {
                         RenameTargets parameterTargets = ParseTargets(methodTargets, parameter.ParamDef?.CustomAttributes);
                         if(parameterTargets.HasFlag(RenameTargets.Parameter)) parameter.Name = Rename.RandomName();
@@ -48,15 +48,17 @@ namespace Confuser.Protections {
                         foreach(GenericParam genericParam in method.GenericParameters) genericParam.Name = Rename.RandomName();
                 }
                 foreach(FieldDef field in type.Fields) {
+                    if(type.IsPublic && (field.IsPublic || field.IsFamily || field.IsFamilyOrAssembly)) continue;
                     RenameTargets fieldTargets = ParseTargets(targets, field.CustomAttributes);
                     if(fieldTargets.HasFlag(RenameTargets.Field)) field.Name = Rename.RandomName();
                 }
                 foreach(PropertyDef property in type.Properties) {
-                    if(property.IsSpecialName) continue;
+                    if(property.IsSpecialName || type.IsPublic && (property.IsPublic() || property.IsFamily() || property.IsFamilyOrAssembly())) continue;
                     RenameTargets propertyTargets = ParseTargets(targets, property.CustomAttributes);
                     if(propertyTargets.HasFlag(RenameTargets.Property)) property.Name = Rename.RandomName();
                 }
                 foreach(EventDef @event in type.Events) {
+                    if(type.IsPublic) continue;
                     RenameTargets eventTargets = ParseTargets(targets, @event.CustomAttributes);
                     if(eventTargets.HasFlag(RenameTargets.Event)) @event.Name = Rename.RandomName();
                 }
