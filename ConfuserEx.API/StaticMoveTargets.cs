@@ -9,5 +9,5 @@ public enum StaticMoveTargets {
 	Method = 2,
 	Property = 4,
 	Event = 8,
-	All = Field | Method | Property | Event
+	All = 0xFFFFFFF
 }

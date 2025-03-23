@@ -10,5 +10,5 @@ public enum TypeChangeTargets {
     Property = 4,
     Parameter = 8,
     Local = 0x10,
-    All = Field | Method | Property | Parameter | Local
+    All = 0xFFFFFFF
 }
