@@ -14,8 +14,8 @@ public class Rename {
         .ToArray();
 
     public static string RandomName() {
-        if(true) return SimpleName();
-        byte[] bytes = new byte[40];
+        if(false) return SimpleName();
+        byte[] bytes = new byte[30];
         Utils.Random.NextBytes(bytes);
         return EncodeString(bytes, UnicodeCharset);
     }
