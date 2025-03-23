@@ -38,8 +38,8 @@ namespace Confuser.Protections {
                 }
                 foreach(MethodDef method in type.Methods) {
                     RenameTargets methodTargets = ParseTargets(targets, method.CustomAttributes);
-                    if((!method.IsPublic && !method.IsFamilyOrAssembly && !method.IsFamily || !type.IsPublic) && !method.IsConstructor &&
-                       !method.IsSpecialName && methodTargets.HasFlag(RenameTargets.Method)) method.Name = Rename.RandomName();
+                    if((method is { IsPublic: false, IsFamily: false, IsFamilyOrAssembly: false } || !type.IsPublic) && !method.IsConstructor &&
+                       !method.IsSpecialName && method is not { IsVirtual: true, IsNewSlot: false } && methodTargets.HasFlag(RenameTargets.Method)) method.Name = Rename.RandomName();
                     foreach(Parameter parameter in method.Parameters) {
                         RenameTargets parameterTargets = ParseTargets(methodTargets, parameter.ParamDef?.CustomAttributes);
                         if(parameterTargets.HasFlag(RenameTargets.Parameter)) parameter.Name = Rename.RandomName();
