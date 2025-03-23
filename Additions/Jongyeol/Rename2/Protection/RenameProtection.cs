@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Confuser.Core;
 using ConfuserEx_Additions.Jongyeol;
@@ -106,7 +107,10 @@ namespace Confuser.Protections {
                     } else if(attribute.TypeFullName == typeof(ExcludeRenameAttribute).FullName) {
                         removeAttributes.Add(attribute);
                         targets &= ~(RenameTargets) attribute.ConstructorArguments[0].Value;
-                    } else if(attribute.TypeFullName == typeof(SetRenameAttribute).FullName) setName = attribute.ConstructorArguments[0].Value as string;
+                    } else if(attribute.TypeFullName == typeof(SetRenameAttribute).FullName) {
+                        removeAttributes.Add(attribute);
+                        setName = attribute.ConstructorArguments[0].Value as UTF8String;
+                    }
                 foreach(CustomAttribute attribute in removeAttributes) attributes.Remove(attribute);
                 return targets;
             }
