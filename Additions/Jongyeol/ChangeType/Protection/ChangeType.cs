@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Confuser.Core;
 using Confuser.Core.Services;
@@ -40,14 +41,24 @@ namespace Confuser.Protections {
 
 			private static void ChangeType(TypeDef type, TypeSig typeSig, TypeChangeTargets targets) {
 		        targets = ParseTargets(targets, type.CustomAttributes);
+		        bool attribute = false;
+		        TypeDef type2 = type;
+		        while(type2.BaseType != null) {
+			        if(type2.BaseType.FullName == typeof(Attribute).FullName) {
+				        attribute = true;
+				        break;
+			        }
+			        type2 = type2.BaseType.ResolveTypeDef();
+		        }
 		        foreach(MethodDef method in type.Methods) {
 		            TypeChangeTargets methodTargets = ParseTargets(targets, method.CustomAttributes);
 		            if(methodTargets.HasFlag(TypeChangeTargets.Method) && CheckType(method.ReturnType)) method.ReturnType = typeSig;
-		            if(method is not { IsVirtual: true, IsNewSlot: false })
-		                foreach(Parameter parameter in method.Parameters) {
-		                    TypeChangeTargets parameterTargets = ParseTargets(methodTargets, parameter.ParamDef?.CustomAttributes);
-		                    if(parameterTargets.HasFlag(TypeChangeTargets.Parameter) && CheckType(parameter.Type)) parameter.Type = typeSig;
-		                }
+		            if(method is not { IsVirtual: true, IsNewSlot: false } && !(attribute && method.IsConstructor)) {
+			            foreach(Parameter parameter in method.Parameters) {
+				            TypeChangeTargets parameterTargets = ParseTargets(methodTargets, parameter.ParamDef?.CustomAttributes);
+				            if(parameterTargets.HasFlag(TypeChangeTargets.Parameter) && CheckType(parameter.Type)) parameter.Type = typeSig;
+			            }
+		            }
 		            if(method.HasBody)
 		                foreach(Local local in method.Body.Variables)
 		                    if(methodTargets.HasFlag(TypeChangeTargets.Local) && CheckType(local.Type)) local.Type = typeSig;
@@ -79,7 +90,7 @@ namespace Confuser.Protections {
 			}
 
 			private static bool CheckType(TypeSig typeSig) {
-				if(typeSig is not ({ IsValueType: false, IsValueArray: false } and not GenericMVar and not GenericVar)) return false;
+				if(typeSig is not ({ IsValueType: false } and not GenericMVar and not GenericVar)) return false;
 				if(typeSig is NonLeafSig { Next: not GenericMVar and GenericVar }) return false;
 				return true;
 			}
