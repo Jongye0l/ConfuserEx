@@ -64,7 +64,6 @@ namespace Confuser.Protections {
                     Dictionary<TypeDef, MethodDefUser> methodMap = new();
                     MethodDef cctor = globalType.FindOrCreateStaticConstructor();
                     cctor.Body ??= new CilBody();
-                    if(cctor.Body.Instructions.Last()?.OpCode == OpCodes.Ret) cctor.Body.Instructions.RemoveAt(cctor.Body.Instructions.Count - 1);
                     foreach(TypeDef typeDef in needCtors1.OrderBy(_ => Utils.Random.Next())) {
                         if(typeDef.IsNestedPrivate) continue;
                         MethodDefUser method = new(Rename.RandomName(), MethodSig.CreateStatic(globalType.Module.CorLibTypes.Void), MethodImplAttributes.Managed | MethodImplAttributes.IL, MethodAttributes.Assembly | MethodAttributes.Static);
@@ -73,12 +72,10 @@ namespace Confuser.Protections {
                         method.Body = new CilBody();
                         method.Body.Instructions.Insert(0, OpCodes.Ret.ToInstruction());
                         methodMap.Add(typeDef, method);
-                        cctor.Body.Instructions.Add(Instruction.Create(OpCodes.Call, method));
+                        cctor.Body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, method));
                     }
-                    cctor.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
                     cctor = moveType.FindOrCreateStaticConstructor();
                     cctor.Body = new CilBody();
-                    cctor.Body.Instructions.Clear();
                     foreach(TypeDef typeDef in needCtors2.OrderBy(_ => Utils.Random.Next())) {
                         if(!methodMap.TryGetValue(typeDef, out MethodDefUser method)) {
                             if(typeDef.IsNestedPrivate) continue;
@@ -89,9 +86,8 @@ namespace Confuser.Protections {
                             method.Body.Instructions.Insert(0, OpCodes.Ret.ToInstruction());
                             methodMap.Add(typeDef, method);
                         }
-                        cctor.Body.Instructions.Add(Instruction.Create(OpCodes.Call, method));
+                        cctor.Body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, method));
                     }
-                    cctor.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
                 }
             }
 
