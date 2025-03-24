@@ -187,6 +187,7 @@ namespace Confuser.Protections {
 
             private MethodDefUser MakeNewMethod(MethodDef methodDef, TypeDefUser moveType, IMarkerService marker) {
                 MethodDefUser methodDefUser = new(Rename.RandomName(), methodDef.MethodSig, MethodImplAttributes.Managed, MethodAttributes.Assembly | MethodAttributes.Static);
+                foreach(CustomAttribute customAttribute in methodDef.CustomAttributes) methodDefUser.CustomAttributes.Add(customAttribute);
                 moveType.Methods.Add(methodDefUser);
                 marker.Mark(methodDefUser, Parent);
                 methodDefUser.Body = new CilBody();
