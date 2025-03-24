@@ -17,7 +17,7 @@ namespace Confuser.Protections {
 		public override string FullId => "Jongyeol.TypeChange";
 		protected override void Initialize(ConfuserContext context) { }
 		protected override void PopulatePipeline(ProtectionPipeline pipeline) {
-			pipeline.InsertPreStage(PipelineStage.WriteModule, new ChangeTypePhase(this));
+			pipeline.InsertPostStage(PipelineStage.OptimizeMethods, new ChangeTypePhase(this));
 		}
 
 		private class ChangeTypePhase : ProtectionPhase {

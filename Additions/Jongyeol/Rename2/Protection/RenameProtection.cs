@@ -16,7 +16,7 @@ namespace Confuser.Protections {
         protected override void Initialize(ConfuserContext context) { }
 
         protected override void PopulatePipeline(ProtectionPipeline pipeline) {
-            pipeline.InsertPreStage(PipelineStage.WriteModule, new RenamePhase(this));
+            pipeline.InsertPostStage(PipelineStage.OptimizeMethods, new RenamePhase(this));
         }
 
         private class RenamePhase : ProtectionPhase {

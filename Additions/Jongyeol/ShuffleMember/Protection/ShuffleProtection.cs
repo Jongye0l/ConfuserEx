@@ -15,7 +15,7 @@ namespace Confuser.Protections {
 		public override string FullId => "Jongyeol.SuffleMember";
 		protected override void Initialize(ConfuserContext context) { }
 		protected override void PopulatePipeline(ProtectionPipeline pipeline) {
-			pipeline.InsertPreStage(PipelineStage.WriteModule, new ShufflePhase(this));
+			pipeline.InsertPreStage(PipelineStage.OptimizeMethods, new ShufflePhase(this));
 		}
 
 		private class ShufflePhase : ProtectionPhase {

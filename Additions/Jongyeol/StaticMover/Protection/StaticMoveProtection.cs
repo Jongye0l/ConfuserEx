@@ -10,6 +10,7 @@ using dnlib.DotNet.Emit;
 using Utils = ConfuserEx_Additions.Jongyeol.Utils;
 
 namespace Confuser.Protections {
+    [BeforeProtection("Ki.ControlFlow")]
     [AfterProtection("Ki.RefProxy")]
     public class StaticMoveProtection : Protection {
         public override ProtectionPreset Preset => ProtectionPreset.Minimum;
@@ -20,7 +21,7 @@ namespace Confuser.Protections {
         protected override void Initialize(ConfuserContext context) { }
 
         protected override void PopulatePipeline(ProtectionPipeline pipeline) {
-            pipeline.InsertPreStage(PipelineStage.WriteModule, new StaticMovePhase(this));
+            pipeline.InsertPreStage(PipelineStage.OptimizeMethods, new StaticMovePhase(this));
         }
 
         private class StaticMovePhase : ProtectionPhase {
