@@ -75,10 +75,11 @@ namespace Confuser.Protections {
                         cctor.Body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, method));
                     }
                     cctor = moveType.FindOrCreateStaticConstructor();
+                    marker.Mark(cctor, Parent);
                     foreach(TypeDef typeDef in needCtors2.OrderBy(_ => Utils.Random.Next())) {
                         if(!methodMap.TryGetValue(typeDef, out MethodDefUser method)) {
                             if(typeDef.IsNestedPrivate) continue;
-                            method = new MethodDefUser(Rename.RandomName(), MethodSig.CreateStatic(globalType.Module.CorLibTypes.Void), MethodImplAttributes.Managed, MethodAttributes.Assembly | MethodAttributes.Static);
+                            method = new MethodDefUser(Rename.RandomName(), MethodSig.CreateStatic(globalType.Module.CorLibTypes.Void), MethodImplAttributes.Managed | MethodImplAttributes.IL, MethodAttributes.Assembly | MethodAttributes.Static);
                             typeDef.Methods.Add(method);
                             marker.Mark(typeDef, Parent);
                             method.Body = new CilBody();
@@ -185,19 +186,39 @@ namespace Confuser.Protections {
             }
 
             private MethodDefUser MakeNewMethod(MethodDef methodDef, TypeDefUser moveType, IMarkerService marker) {
-                MethodDefUser methodDefUser = new(Rename.RandomName(), methodDef.MethodSig, MethodImplAttributes.Managed, MethodAttributes.Assembly | MethodAttributes.Static);
+                MethodDefUser methodDefUser = new(Rename.RandomName(), methodDef.MethodSig.Clone(), MethodImplAttributes.Managed | MethodImplAttributes.IL, MethodAttributes.Assembly | MethodAttributes.Static) {
+                    Body = new CilBody()
+                };
                 foreach(CustomAttribute customAttribute in methodDef.CustomAttributes) methodDefUser.CustomAttributes.Add(customAttribute);
-                moveType.Methods.Add(methodDefUser);
-                marker.Mark(methodDefUser, Parent);
-                methodDefUser.Body = new CilBody();
-                ushort i = 1;
-                foreach(Parameter parameter in methodDefUser.Parameters) {
-                    methodDefUser.Body.Instructions.Add(OpCodes.Ldarg.ToInstruction(parameter));
-                    methodDefUser.ParamDefs.Add(new ParamDefUser(Rename.RandomName(), i++));
+                for(ushort i = 0; i < methodDefUser.Parameters.Count; i++) {
+                    Instruction instruction;
+                    switch(i) {
+                        case 0:
+                            instruction = OpCodes.Ldarg_0.ToInstruction();
+                            break;
+                        case 1:
+                            instruction = OpCodes.Ldarg_1.ToInstruction();
+                            break;
+                        case 2:
+                            instruction = OpCodes.Ldarg_2.ToInstruction();
+                            break;
+                        case 3:
+                            instruction = OpCodes.Ldarg_3.ToInstruction();
+                            break;
+                        default:
+                            Parameter parameter = methodDefUser.Parameters[i];
+                            instruction = i < 256 ? OpCodes.Ldarg_S.ToInstruction(parameter) : OpCodes.Ldarg.ToInstruction(parameter);
+                            break;
+                    }
+                    methodDefUser.Body.Instructions.Add(instruction);
+                    ParamDef param = methodDef.ParamDefs[i];
+                    methodDefUser.ParamDefs.Add(new ParamDefUser(param.Name, param.Sequence, param.Attributes));
                 }
                 methodDefUser.Body.Instructions.Add(OpCodes.Call.ToInstruction(methodDef));
                 methodDefUser.Body.Instructions.Add(OpCodes.Ret.ToInstruction());
                 MethodMap.Add(methodDef, methodDefUser);
+                moveType.Methods.Add(methodDefUser);
+                marker.Mark(methodDefUser, Parent);
                 return methodDefUser;
             }
 
