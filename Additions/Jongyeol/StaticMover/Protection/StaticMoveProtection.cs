@@ -100,7 +100,8 @@ namespace Confuser.Protections {
                     foreach(MethodDef method in methods) {
                         if(!method.HasBody || !method.Body.HasInstructions || !method.IsStatic || method.IsSpecialName || method.IsPublic && type.IsPublic) continue;
                         curTargets = ParseTargets(targets, method.CustomAttributes);
-                        if(curTargets.HasFlag(StaticMoveTargets.Method)) method.DeclaringType = globalType;
+                        if(!curTargets.HasFlag(StaticMoveTargets.Method)) continue;
+                        method.DeclaringType = globalType;
                         if(method.IsPrivate) method.Access = MethodAttributes.Assembly;
                         movedMembers.Add(method);
                         foreach(Instruction instruction in method.Body.Instructions) {
@@ -155,7 +156,7 @@ namespace Confuser.Protections {
                                 needCtorMembers.Add(member);
                         if(needCtorMembers.Count > 0) NeedCtorMembers[type] = needCtorMembers;
                     }
-                }
+                } else foreach(MethodDef method in type.Methods) if(method.IsPrivate) method.Access = MethodAttributes.Assembly;
                 foreach(TypeDef typeDef in type.GetTypes()) MoveMembers(typeDef, globalType, targets);
             }
 
