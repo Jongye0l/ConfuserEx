@@ -64,7 +64,6 @@ namespace Confuser.Protections {
                     }
                     Dictionary<TypeDef, MethodDefUser> methodMap = new();
                     MethodDef cctor = globalType.FindOrCreateStaticConstructor();
-                    cctor.Body ??= new CilBody();
                     foreach(TypeDef typeDef in needCtors1.OrderBy(_ => Utils.Random.Next())) {
                         if(typeDef.IsNestedPrivate) continue;
                         MethodDefUser method = new(Rename.RandomName(), MethodSig.CreateStatic(globalType.Module.CorLibTypes.Void), MethodImplAttributes.Managed | MethodImplAttributes.IL, MethodAttributes.Assembly | MethodAttributes.Static);
@@ -76,7 +75,6 @@ namespace Confuser.Protections {
                         cctor.Body.Instructions.Insert(0, Instruction.Create(OpCodes.Call, method));
                     }
                     cctor = moveType.FindOrCreateStaticConstructor();
-                    cctor.Body = new CilBody();
                     foreach(TypeDef typeDef in needCtors2.OrderBy(_ => Utils.Random.Next())) {
                         if(!methodMap.TryGetValue(typeDef, out MethodDefUser method)) {
                             if(typeDef.IsNestedPrivate) continue;
