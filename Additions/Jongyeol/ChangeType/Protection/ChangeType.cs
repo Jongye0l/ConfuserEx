@@ -28,18 +28,43 @@ namespace Confuser.Protections {
 
 			public override string Name => "type Change";
 
+			private IMarkerService marker;
+			private ModuleDefMD module;
+			private TypeSig objectTypeSig;
+			private TypeSig byteTypeSig;
+			private TypeSig shortTypeSig;
+			private TypeSig intTypeSig;
+			private TypeSig longTypeSig;
+
+			private TypeSig GetObjectTypeSig() => objectTypeSig ??= MakeTypeSig(module.CorLibTypes.Object.TypeDefOrRef, false);
+			private TypeSig GetByteTypeSig() => byteTypeSig ??= MakeTypeSig(module.CorLibTypes.Byte.TypeDefOrRef, true);
+			private TypeSig GetShortTypeSig() => shortTypeSig ??= MakeTypeSig(module.CorLibTypes.Int16.TypeDefOrRef, true);
+			private TypeSig GetIntTypeSig() => intTypeSig ??= MakeTypeSig(module.CorLibTypes.Int32.TypeDefOrRef, true);
+			private TypeSig GetLongTypeSig() => longTypeSig ??= MakeTypeSig(module.CorLibTypes.Int64.TypeDefOrRef, true);
+
+			private TypeSig MakeTypeSig(ITypeDefOrRef type, bool isEnum) {
+				TypeDefUser typeDef = new(Rename.RandomName(), Rename.RandomName(), isEnum ? module.CorLibTypes.GetTypeRef("System", "Enum") : type);
+				module.Types.Add(typeDef);
+				marker.Mark(typeDef, Parent);
+				if(isEnum) {
+					FieldDefUser valueField = new("value__", new FieldSig(type.ToTypeSig())) {
+						Attributes = FieldAttributes.Public | FieldAttributes.SpecialName | FieldAttributes.RTSpecialName
+					};
+					typeDef.Fields.Add(valueField);
+					marker.Mark(valueField, Parent);
+				}
+				return typeDef.ToTypeSig();
+			}
+
 			protected override void Execute(ConfuserContext context, ProtectionParameters parameters) {
-				IMarkerService marker = context.Registry.GetService<IMarkerService>();
+				marker = context.Registry.GetService<IMarkerService>();
 				foreach(ModuleDefMD module in parameters.Targets.OfType<ModuleDefMD>().WithProgress(context.Logger)) {
-					TypeDefUser typeDef = new(Rename.RandomName(), Rename.RandomName(), module.CorLibTypes.Object.TypeDefOrRef);
-					module.Types.Add(typeDef);
-					marker.Mark(typeDef, Parent);
-					TypeSig typeSig = typeDef.ToTypeSig();
-					foreach(TypeDef type in module.Types) ChangeType(type, typeSig, TypeChangeTargets.All);
+					this.module = module;
+					foreach(TypeDef type in module.Types.ToArray()) ChangeType(type, TypeChangeTargets.All);
 				}
 			}
 
-			private static void ChangeType(TypeDef type, TypeSig typeSig, TypeChangeTargets targets) {
+			private void ChangeType(TypeDef type, TypeChangeTargets targets) {
 		        targets = ParseTargets(targets, type.CustomAttributes);
 		        bool attribute = false;
 		        TypeDef type2 = type;
@@ -52,26 +77,27 @@ namespace Confuser.Protections {
 		        }
 		        foreach(MethodDef method in type.Methods) {
 		            TypeChangeTargets methodTargets = ParseTargets(targets, method.CustomAttributes);
-		            if(methodTargets.HasFlag(TypeChangeTargets.Method) && CheckType(method.ReturnType)) method.ReturnType = typeSig;
+		            if(methodTargets.HasFlag(TypeChangeTargets.Method) && CheckType(method.ReturnType, out TypeSig typeSig)) method.ReturnType = typeSig;
 		            if(method is not { IsVirtual: true, IsNewSlot: false } && !(attribute && method.IsConstructor)) {
-			            foreach(Parameter parameter in method.Parameters) {
+			            for(int i = 0; i < method.Parameters.Count; i++) {
+				            Parameter parameter = method.Parameters[i];
 				            TypeChangeTargets parameterTargets = ParseTargets(methodTargets, parameter.ParamDef?.CustomAttributes);
-				            if(parameterTargets.HasFlag(TypeChangeTargets.Parameter) && CheckType(parameter.Type)) parameter.Type = typeSig;
+				            if(parameterTargets.HasFlag(TypeChangeTargets.Parameter) && CheckType(parameter.Type, out typeSig)) parameter.Type = typeSig;
 			            }
 		            }
 		            if(method.HasBody)
 		                foreach(Local local in method.Body.Variables)
-		                    if(methodTargets.HasFlag(TypeChangeTargets.Local) && CheckType(local.Type)) local.Type = typeSig;
+		                    if(methodTargets.HasFlag(TypeChangeTargets.Local) && CheckType(local.Type, out typeSig)) local.Type = typeSig;
 		        }
 		        foreach(FieldDef field in type.Fields) {
 		            TypeChangeTargets fieldTargets = ParseTargets(targets, field.CustomAttributes);
-		            if(fieldTargets.HasFlag(TypeChangeTargets.Field) && CheckType(field.FieldType)) field.FieldType = typeSig;
+		            if(fieldTargets.HasFlag(TypeChangeTargets.Field) && CheckType(field.FieldType, out TypeSig typeSig)) field.FieldType = typeSig;
 		        }
 		        foreach(PropertyDef property in type.Properties) {
 		            TypeChangeTargets propertyTargets = ParseTargets(targets, property.CustomAttributes);
-		            if(propertyTargets.HasFlag(TypeChangeTargets.Property) && CheckType(property.PropertySig.RetType)) property.PropertySig.RetType = typeSig;
+		            if(propertyTargets.HasFlag(TypeChangeTargets.Property) && CheckType(property.PropertySig.RetType, out TypeSig typeSig)) property.PropertySig.RetType = typeSig;
 		        }
-		        foreach(TypeDef typeDef in type.GetTypes()) ChangeType(typeDef, typeSig, targets);
+		        foreach(TypeDef typeDef in type.GetTypes()) ChangeType(typeDef, targets);
 		    }
 
 			private static TypeChangeTargets ParseTargets(TypeChangeTargets targets, CustomAttributeCollection attributes) {
@@ -89,9 +115,27 @@ namespace Confuser.Protections {
 				return targets;
 			}
 
-			private static bool CheckType(TypeSig typeSig) {
-				if(typeSig is not ({ IsValueType: false } and not GenericMVar and not GenericVar)) return false;
-				if(typeSig is NonLeafSig { Next: not GenericMVar and GenericVar }) return false;
+			private bool CheckType(TypeSig typeSig, out TypeSig outTypeSig) {
+				if(typeSig.IsPrimitive) {
+					int size = typeSig.ElementType.GetPrimitiveSize();
+					outTypeSig = size switch {
+						1 => GetByteTypeSig(),
+						2 => GetShortTypeSig(),
+						4 => GetIntTypeSig(),
+						8 => GetLongTypeSig(),
+						_ => null
+					};
+					if(outTypeSig != null) return true;
+				}
+				if(typeSig is not ({ IsValueType: false } and not GenericMVar and not GenericVar)) {
+					outTypeSig = null;
+					return false;
+				}
+				if(typeSig is NonLeafSig { Next: not GenericMVar and GenericVar }) {
+					outTypeSig = null;
+					return false;
+				}
+				outTypeSig = GetObjectTypeSig();
 				return true;
 			}
 		}
