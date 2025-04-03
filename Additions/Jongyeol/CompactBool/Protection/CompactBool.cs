@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Confuser.Core;
 using Confuser.Core.Services;
 using ConfuserEx_Additions.Jongyeol;
@@ -96,7 +95,7 @@ namespace Confuser.Protections {
 				if(fieldCount > 0) {
 					intFields = new List<FieldDef>(fieldCount);
 					for(int i = 0; i < fieldCount; i++) {
-						FieldDefUser field = new(Rename.RandomName(), new FieldSig(type.Module.CorLibTypes.UInt32), FieldAttributes.Assembly);
+						FieldDefUser field = new(Rename.RandomName(), new FieldSig(type.Module.CorLibTypes.Int32), FieldAttributes.Assembly);
 						type.Fields.Add(field);
 						marker.Mark(type, Parent);
 						intFields.Add(field);
@@ -133,15 +132,18 @@ namespace Confuser.Protections {
 									if(prevCode == OpCodes.Ldc_I4_0) value = false;
 									if(prevCode == OpCodes.Ldc_I4_1) value = true;
 									if(value != null) {
-										if(!field.IsStatic) instructions.Insert(i++ - 1, OpCodes.Dup.ToInstruction());
-										instruction.OpCode = field.IsStatic ? OpCodes.Ldsfld : OpCodes.Ldfld;
-										instruction.Operand = intField;
+										Instruction newInstruction = instructions[i - 1];
+										if(!field.IsStatic) instructions.Insert(i++ - 2, OpCodes.Dup.ToInstruction());
+										newInstruction.OpCode = field.IsStatic ? OpCodes.Ldsfld : OpCodes.Ldfld;
+										newInstruction.Operand = intField;
 										if(value.Value) {
-											instructions.Insert(++i, CreateIntOpCode(1 << index));
-											instructions.Insert(++i, OpCodes.Or.ToInstruction());
+											instructions.Insert(i++, CreateIntOpCode(1 << index));
+											instruction.OpCode = OpCodes.Or;
+											instruction.Operand = null;
 										} else {
-											instructions.Insert(++i, CreateIntOpCode(~(1 << index)));
-											instructions.Insert(++i, OpCodes.And.ToInstruction());
+											instructions.Insert(i++, CreateIntOpCode(~(1 << index)));
+											instruction.OpCode = OpCodes.And;
+											instruction.Operand = null;
 										}
 										instructions.Insert(++i, (field.IsStatic ? OpCodes.Stsfld : OpCodes.Stfld).ToInstruction(intField));
 									} else if(field.IsStatic) {
