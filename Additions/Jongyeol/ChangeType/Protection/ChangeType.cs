@@ -127,7 +127,26 @@ namespace Confuser.Protections {
 					};
 					if(outTypeSig != null) return true;
 				}
-				if(typeSig is not ({ IsValueType: false } and not GenericMVar and not GenericVar)) {
+				if(typeSig.IsValueType) {
+					TypeDef typeDef = typeSig.ToTypeDefOrRef().ResolveTypeDef();
+					if(typeDef != null) {
+						if(typeDef.IsEnum) {
+							FieldDef fieldDef = typeDef.GetField("value__");
+							int size = fieldDef.FieldType.ElementType.GetPrimitiveSize();
+							outTypeSig = size switch {
+								1 => GetByteTypeSig(),
+								2 => GetShortTypeSig(),
+								4 => GetIntTypeSig(),
+								8 => GetLongTypeSig(),
+								_ => null
+							};
+							if(outTypeSig != null) return true;
+						}
+					}
+					outTypeSig = null;
+					return false;
+				}
+				if(typeSig is GenericMVar or GenericVar) {
 					outTypeSig = null;
 					return false;
 				}
