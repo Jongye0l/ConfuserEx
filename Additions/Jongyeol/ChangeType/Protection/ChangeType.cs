@@ -82,7 +82,8 @@ namespace Confuser.Protections {
 			            for(int i = 0; i < method.Parameters.Count; i++) {
 				            Parameter parameter = method.Parameters[i];
 				            TypeChangeTargets parameterTargets = ParseTargets(methodTargets, parameter.ParamDef?.CustomAttributes);
-				            if(parameterTargets.HasFlag(TypeChangeTargets.Parameter) && CheckType(parameter.Type, out typeSig)) parameter.Type = typeSig;
+				            if(parameterTargets.HasFlag(TypeChangeTargets.Parameter) && CheckType(parameter.Type, out typeSig) && (method.IsStatic || parameter.Index != 1)) 
+					            parameter.Type = typeSig;
 			            }
 		            }
 		            if(method.HasBody)
