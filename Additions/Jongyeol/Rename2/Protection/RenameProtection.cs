@@ -28,7 +28,7 @@ namespace Confuser.Protections {
             public override string Name => "Name Protect Phase";
 
             protected override void Execute(ConfuserContext context, ProtectionParameters parameters) {
-                foreach(TypeDef type in parameters.Targets.OfType<TypeDef>().WithProgress(context.Logger)) RenameType(type, RenameTargets.All);
+                foreach(TypeDef type in parameters.Targets.OfType<TypeDef>().WithProgress(context.Logger)) if(type.DeclaringType == null) RenameType(type, RenameTargets.All);
             }
 
             private static void RenameType(TypeDef type, RenameTargets targets) {
@@ -92,7 +92,7 @@ namespace Confuser.Protections {
                         rename = null;
                     } else if(eventTargets.HasFlag(RenameTargets.Event)) @event.Name = Rename.RandomName();
                 }
-                foreach(TypeDef typeDef in type.GetTypes()) RenameType(typeDef, targets);
+                foreach(TypeDef typeDef in type.NestedTypes) RenameType(typeDef, targets);
                 if(type.HasGenericParameters && targets.HasFlag(RenameTargets.TypeGenericParameter))
                     foreach(GenericParam genericParam in type.GenericParameters) genericParam.Name = Rename.RandomName();
             }
