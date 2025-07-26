@@ -123,6 +123,10 @@ namespace Confuser.Protections {
 					outTypeSig = GetObjectRefTypeSig();
 					return true;
 				}
+				if(typeSig.ElementType is ElementType.R4 or ElementType.R8) {
+					outTypeSig = null;
+					return false;
+				}
 				if(typeSig.IsPrimitive) {
 					int size = typeSig.ElementType.GetPrimitiveSize();
 					outTypeSig = size switch {
