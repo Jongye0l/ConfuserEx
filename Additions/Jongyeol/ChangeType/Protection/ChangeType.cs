@@ -35,12 +35,14 @@ namespace Confuser.Protections {
 			private TypeSig shortTypeSig;
 			private TypeSig intTypeSig;
 			private TypeSig longTypeSig;
+			private TypeSig objectRefTypeSig;
 
 			private TypeSig GetObjectTypeSig() => objectTypeSig ??= MakeTypeSig(module.CorLibTypes.Object.TypeDefOrRef, false);
 			private TypeSig GetByteTypeSig() => byteTypeSig ??= MakeTypeSig(module.CorLibTypes.Byte.TypeDefOrRef, true);
 			private TypeSig GetShortTypeSig() => shortTypeSig ??= MakeTypeSig(module.CorLibTypes.Int16.TypeDefOrRef, true);
 			private TypeSig GetIntTypeSig() => intTypeSig ??= MakeTypeSig(module.CorLibTypes.Int32.TypeDefOrRef, true);
 			private TypeSig GetLongTypeSig() => longTypeSig ??= MakeTypeSig(module.CorLibTypes.Int64.TypeDefOrRef, true);
+			private TypeSig GetObjectRefTypeSig() => objectRefTypeSig ??= new ByRefSig(GetObjectTypeSig());
 
 			private TypeSig MakeTypeSig(ITypeDefOrRef type, bool isEnum) {
 				TypeDefUser typeDef = new(Rename.RandomName(), Rename.RandomName(), isEnum ? module.CorLibTypes.GetTypeRef("System", "Enum") : type);
@@ -117,6 +119,10 @@ namespace Confuser.Protections {
 			}
 
 			private bool CheckType(TypeSig typeSig, out TypeSig outTypeSig) {
+				if(typeSig.IsByRef) {
+					outTypeSig = GetObjectRefTypeSig();
+					return true;
+				}
 				if(typeSig.IsPrimitive) {
 					int size = typeSig.ElementType.GetPrimitiveSize();
 					outTypeSig = size switch {
